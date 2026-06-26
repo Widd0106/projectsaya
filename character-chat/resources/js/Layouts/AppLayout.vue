@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
-import { Plus, BookOpen, Search, User as UserIcon, LogOut } from 'lucide-vue-next';
+import { Plus, BookOpen, Search, User as UserIcon, LogOut, Menu, X } from 'lucide-vue-next';
 
 const page = usePage();
 const sidebarSearch = ref('');
+const isMobileMenuOpen = ref(false);
 
 const recentChats = computed(() => page.props.sidebarRecentChats || []);
 const username = computed(() => page.props.auth?.user?.username || '');
@@ -16,6 +17,7 @@ const filteredChats = computed(() => {
 });
 
 function goToChat(characterId) {
+  isMobileMenuOpen.value = false;
   router.visit(route('chat.show', characterId));
 }
 
@@ -26,15 +28,31 @@ function logout() {
 
 <template>
   <div class="flex h-screen w-full overflow-hidden bg-bg text-white">
-    <!-- Sidebar -->
-    <aside class="flex w-[280px] flex-shrink-0 flex-col border-r border-border-subtle bg-bg-panel px-6 py-6">
-      <Link :href="route('dashboard')" class="mb-8 text-xl font-bold text-accent">
-        (character.chat)
-      </Link>
+    <!-- Backdrop overlay saat sidebar mobile terbuka -->
+    <div
+      v-if="isMobileMenuOpen"
+      @click="isMobileMenuOpen = false"
+      class="fixed inset-0 z-40 bg-black/60 lg:hidden"
+    ></div>
+
+    <!-- Sidebar: fixed overlay di mobile (slide-in), statis di desktop (lg+) -->
+    <aside
+      class="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-shrink-0 flex-col border-r border-border-subtle bg-bg-panel px-6 py-6 transition-transform duration-200 lg:relative lg:translate-x-0"
+      :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
+    >
+      <div class="mb-8 flex items-center justify-between">
+        <Link :href="route('dashboard')" class="text-xl font-bold text-accent" @click="isMobileMenuOpen = false">
+          (character.chat)
+        </Link>
+        <button @click="isMobileMenuOpen = false" class="text-gray-400 lg:hidden">
+          <X :size="22" />
+        </button>
+      </div>
 
       <nav class="mb-8 flex flex-col gap-1">
         <Link
           :href="route('characters.create')"
+          @click="isMobileMenuOpen = false"
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-bg-card"
           :class="{ 'border-l-2 border-accent bg-bg-card': $page.url.startsWith('/characters/create') }"
         >
@@ -43,6 +61,7 @@ function logout() {
         </Link>
         <Link
           :href="route('dashboard')"
+          @click="isMobileMenuOpen = false"
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-bg-card"
           :class="{ 'border-l-2 border-accent bg-bg-card': $page.url === '/dashboard' }"
         >
@@ -103,9 +122,19 @@ function logout() {
       </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto">
-      <slot />
-    </main>
+    <!-- Wrapper kanan: topbar mobile + konten -->
+    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <!-- Topbar khusus mobile (hamburger), tersembunyi di desktop -->
+      <div class="flex items-center gap-3 border-b border-border-subtle bg-bg-panel px-4 py-3 lg:hidden">
+        <button @click="isMobileMenuOpen = true" class="text-gray-300">
+          <Menu :size="22" />
+        </button>
+        <span class="text-base font-bold text-accent">(character.chat)</span>
+      </div>
+
+      <main class="flex-1 overflow-y-auto">
+        <slot />
+      </main>
+    </div>
   </div>
 </template>

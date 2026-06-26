@@ -38,9 +38,9 @@ function confirmDelete() {
 
 <template>
   <AppLayout>
-    <div class="px-10 py-8">
-      <div class="mb-8 flex items-center justify-between">
-        <div class="relative w-full max-w-md">
+    <div class="px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+      <div class="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+        <div class="relative w-full sm:max-w-md">
           <Search :size="18" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             v-model="searchQuery"
@@ -49,15 +49,15 @@ function confirmDelete() {
             class="w-full rounded-full bg-white py-2.5 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-500 outline-none"
           />
         </div>
-        <div class="text-sm font-medium text-gray-300">
+        <div class="hidden text-sm font-medium text-gray-300 sm:block">
           {{ page.props.auth.user?.username }}
         </div>
       </div>
 
-      <h1 class="mb-1 text-3xl font-bold text-accent">Your Character</h1>
-      <p class="mb-8 text-sm text-gray-400">These are all the characters you created</p>
+      <h1 class="mb-1 text-2xl font-bold text-accent sm:text-3xl">Your Character</h1>
+      <p class="mb-6 text-sm text-gray-400 sm:mb-8">These are all the characters you created</p>
 
-      <div v-if="filteredCharacters.length > 0" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-if="filteredCharacters.length > 0" class="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
         <button
           v-for="character in filteredCharacters"
           :key="character.id"
@@ -76,30 +76,31 @@ function confirmDelete() {
 
           <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
 
-          <div class="absolute bottom-0 left-0 right-0 p-4">
-            <h3 class="mb-1 text-lg font-bold text-white">{{ character.name }}</h3>
-            <p class="line-clamp-2 text-xs text-gray-300">{{ character.short_description }}</p>
+          <div class="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+            <h3 class="mb-1 text-sm font-bold text-white sm:text-lg">{{ character.name }}</h3>
+            <p class="line-clamp-2 text-[11px] text-gray-300 sm:text-xs">{{ character.short_description }}</p>
           </div>
 
-          <div class="absolute right-3 top-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
+          <!-- Tombol Edit/Delete: selalu terlihat di mobile (tidak ada hover di touchscreen), muncul saat hover di desktop -->
+          <div class="absolute right-2 top-2 flex gap-1.5 opacity-100 transition sm:right-3 sm:top-3 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100">
             <Link
               :href="route('characters.edit', character.id)"
               @click.stop
-              class="rounded-full bg-black/50 px-3 py-1 text-xs text-white hover:bg-black/70"
+              class="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white hover:bg-black/80 sm:px-3 sm:py-1 sm:text-xs"
             >
               Edit
             </Link>
             <button
               @click.stop="askDelete(character)"
-              class="flex items-center justify-center rounded-full bg-black/50 p-1.5 text-white hover:bg-red-600"
+              class="flex items-center justify-center rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600"
             >
-              <Trash2 :size="14" />
+              <Trash2 :size="13" />
             </button>
           </div>
         </button>
       </div>
 
-      <div v-else class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border-subtle py-24 text-center">
+      <div v-else class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border-subtle px-4 py-16 text-center sm:py-24">
         <p class="mb-2 text-lg font-medium text-gray-300">Belum ada karakter</p>
         <p class="mb-6 text-sm text-gray-500">Mulai buat karakter AI pertamamu sekarang.</p>
         <Link
