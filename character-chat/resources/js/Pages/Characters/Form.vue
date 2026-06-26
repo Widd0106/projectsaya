@@ -59,14 +59,14 @@ function cancel() {
 
 <template>
   <AppLayout>
-    <div class="px-10 py-8">
-      <div class="mb-8 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">{{ isEdit ? 'Edit Character' : 'Create Character' }}</h1>
+    <div class="px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+      <div class="mb-6 flex items-center justify-between sm:mb-8">
+        <h1 class="text-xl font-bold text-white sm:text-2xl">{{ isEdit ? 'Edit Character' : 'Create Character' }}</h1>
       </div>
 
-      <form @submit.prevent="submit" class="flex flex-col gap-6">
+      <form @submit.prevent="submit" class="flex flex-col gap-4 sm:gap-6">
         <!-- Basic Info -->
-        <section class="rounded-2xl border border-border-subtle bg-bg-panel p-6">
+        <section class="rounded-2xl border border-border-subtle bg-bg-panel p-4 sm:p-6">
           <div class="mb-5 flex items-center gap-2 text-accent">
             <Info :size="18" />
             <h2 class="text-sm font-semibold">Basic Info</h2>
@@ -111,9 +111,9 @@ function cancel() {
           </div>
         </section>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
+        <div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_1.4fr]">
           <!-- Character Avatar -->
-          <section class="rounded-2xl border border-border-subtle bg-bg-panel p-6">
+          <section class="rounded-2xl border border-border-subtle bg-bg-panel p-4 sm:p-6">
             <div class="flex flex-col items-center justify-center py-6 text-center">
               <p class="mb-4 text-sm text-gray-300">Character Avatar</p>
               <label class="relative flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-border-subtle text-gray-500 transition hover:border-accent">
@@ -133,7 +133,7 @@ function cancel() {
           </section>
 
           <!-- Personality & Backstory -->
-          <section class="rounded-2xl border border-border-subtle bg-bg-panel p-6">
+          <section class="rounded-2xl border border-border-subtle bg-bg-panel p-4 sm:p-6">
             <div class="mb-5 flex items-center gap-2 text-accent">
               <Brain :size="18" />
               <h2 class="text-sm font-semibold">Personality &amp; Backstory</h2>
@@ -163,7 +163,7 @@ function cancel() {
         </div>
 
         <!-- Advanced Configuration -->
-        <section class="rounded-2xl border border-border-subtle bg-bg-panel p-6">
+        <section class="rounded-2xl border border-border-subtle bg-bg-panel p-4 sm:p-6">
           <div class="mb-1 flex items-center gap-2 text-accent">
             <MessageSquare :size="18" />
             <h2 class="text-sm font-semibold">Advanced Configuration</h2>
