@@ -73,7 +73,7 @@ function cancel() {
           </div>
 
           <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div>
+            <div> <!--Name input-->
               <label class="mb-1.5 block text-sm text-gray-300">Name</label>
               <input
                 v-model="form.name"
@@ -83,7 +83,7 @@ function cancel() {
               />
               <p v-if="form.errors.name" class="mt-1 text-xs text-red-400">{{ form.errors.name }}</p>
             </div>
-            <div>
+            <div> <!--Gender input-->
               <label class="mb-1.5 block text-sm text-gray-300">Gender</label>
               <select
                 v-model="form.gender"
@@ -93,12 +93,15 @@ function cancel() {
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Non-binary">Non-binary</option>
+                <option value="Agender">Agender</option>
+                <option value="Bigender">Bigender</option>
+                <option value="Genderfluid">Genderfluid</option>
                 <option value="Other">Other</option>
               </select>
             </div>
           </div>
 
-          <div class="mt-5">
+          <div class="mt-5"> <!--Greeting input-->
             <label class="mb-1.5 block text-sm text-gray-300">Greeting</label>
             <textarea
               v-model="form.greeting"
@@ -120,14 +123,11 @@ function cancel() {
                 <img v-if="avatarPreview" :src="avatarPreview" class="absolute inset-0 h-full w-full rounded-full object-cover" />
                 <template v-else>
                   <Camera :size="24" />
-                  <span class="mt-2 text-xs">Upload or Generate</span>
+                  <span class="mt-2 text-xs">Upload Character Image</span>
                 </template>
                 <input type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
-                <div class="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white">
-                  <Wand2 :size="14" />
-                </div>
               </label>
-              <p class="mt-4 text-xs text-gray-500">Recommended: Square 512×512px.<br />You can also generate one with AI.</p>
+              <p class="mt-4 text-xs text-gray-500">Recommended: Square 512×512px.</p>
               <p v-if="form.errors.avatar" class="mt-1 text-xs text-red-400">{{ form.errors.avatar }}</p>
             </div>
           </section>
@@ -139,7 +139,7 @@ function cancel() {
               <h2 class="text-sm font-semibold">Personality &amp; Backstory</h2>
             </div>
 
-            <div class="mb-5">
+            <div class="mb-5"> <!-- ShortDesc input -->
               <label class="mb-1.5 block text-sm text-gray-300">Short Description</label>
               <input
                 v-model="form.short_description"
@@ -150,7 +150,7 @@ function cancel() {
               <p v-if="form.errors.short_description" class="mt-1 text-xs text-red-400">{{ form.errors.short_description }}</p>
             </div>
 
-            <div>
+            <div> <!-- LongDesc input -->
               <label class="mb-1.5 block text-sm text-gray-300">Long Description / Deep Lore</label>
               <textarea
                 v-model="form.long_description"
@@ -182,7 +182,7 @@ function cancel() {
               </button>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3"> <!--Contoh Dialog input user-->
               <label class="mb-1 block text-xs text-gray-400">User:</label>
               <input
                 v-model="dialogue.user"
@@ -191,7 +191,7 @@ function cancel() {
                 class="w-full rounded-lg bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-500 outline-none"
               />
             </div>
-            <div>
+            <div> <!--Contoh Dialog input AI-->
               <label class="mb-1 block text-xs text-gray-400">AI:</label>
               <input
                 v-model="dialogue.ai"
