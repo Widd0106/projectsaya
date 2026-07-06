@@ -41,4 +41,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/chat/{chat}/message', [ChatController::class, 'sendMessage'])
         ->middleware('throttle:20,1')
         ->name('chat.message');
+    
+    // Tambahan ini harus ada di dalam group middleware('auth')
+    Route::delete('/chat/{chat}/message/{message}', [ChatController::class, 'destroyMessage'])
+    ->name('chat.message.destroy');
+
+    Route::delete('/chat/{chat}/clear', [ChatController::class, 'clear'])
+    ->name('chat.clear');
 });

@@ -119,4 +119,43 @@ class ChatController extends Controller
                 ];
             });
     }
+
+    public function destroyMessage(Chat $chat, Message $message)
+{
+    if ($chat->user_id !== Auth::id()) {
+        abort(403);
+    }
+    if ($message->chat_id !== $chat->id) {
+        abort(403);
+    }
+
+    $message->delete();
+
+    $latestRemaining = $chat->messages()->latest()->first();
+    $chat->update(['last_message_at' => $latestRemaining?->created_at]);
+
+    return response()->json(['deleted' => true]);
+}
+
+public function clear(Chat $chat)
+{
+    if ($chat->user_id !== Auth::id()) {
+        abort(403);
+    }
+
+    // Hapus semua pesan di sesi chat ini
+    $chat->messages()->delete();
+
+    // Setelah dihapus, otomatis kirim ulang greeting karakter
+    // supaya chat tidak kosong total, langsung mulai dari awal
+    $greetingMessage = Message::create([
+        'chat_id' => $chat->id,
+        'role'    => 'assistant',
+        'content' => $chat->character->greeting,
+    ]);
+
+    $chat->update(['last_message_at' => now()]);
+
+    return response()->json(['greetingMessage' => $greetingMessage]);
+}
 }
