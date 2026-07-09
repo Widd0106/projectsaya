@@ -41,4 +41,15 @@ return [
     'model' => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
 ],
 
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        // Urutan model dari yang paling diutamakan -> cadangan.
+        // Model pertama gagal/limit -> OpenRouter otomatis coba yang berikutnya.
+        // Default: 100% model GRATIS (akhiran :free / openrouter/free), tidak butuh kartu kredit.
+        'models' => array_filter(array_map('trim', explode(',', env(
+            'OPENROUTER_MODELS',
+            'z-ai/glm-4.5-air:free,openai/gpt-oss-120b:free,openrouter/free'
+        )))),
+    ],
+
 ];
