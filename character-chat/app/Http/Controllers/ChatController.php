@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Chat;
 use App\Models\Character;
 use App\Models\Message;
-use App\Services\GeminiService;
+use App\Services\AiReplyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +14,7 @@ use Inertia\Response;
 
 class ChatController extends Controller
 {
-    public function __construct(protected GeminiService $gemini)
+    public function __construct(protected AiReplyService $ai)
     {
     }
 
@@ -78,7 +78,7 @@ class ChatController extends Controller
         ]);
 
         // Bangun system prompt + 10 riwayat terakhir, lalu panggil Gemini
-        $aiReplyText = $this->gemini->generateReply($chat, $validated['message']);
+        $aiReplyText = $this->ai->generateReply($chat, $validated['message']);
 
         $aiMessage = Message::create([
             'chat_id' => $chat->id,
