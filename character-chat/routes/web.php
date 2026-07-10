@@ -48,4 +48,20 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/chat/{chat}/clear', [ChatController::class, 'clear'])
     ->name('chat.clear');
+
+    // Endpoint streaming (SSE) yang dipakai frontend saat ini.
+    Route::post('/chat/{chat}/message/stream', [ChatController::class, 'streamMessage'])
+        ->middleware('throttle:20,1')
+        ->name('chat.message.stream');
+
+    // Regenerate balasan AI terakhir.
+    Route::post('/chat/{chat}/message/{message}/regenerate', [ChatController::class, 'regenerateMessage'])
+        ->middleware('throttle:20,1')
+        ->name('chat.message.regenerate');
+
+    // Edit pesan user -> riwayat setelahnya dihapus & AI generate ulang.
+    Route::put('/chat/{chat}/message/{message}', [ChatController::class, 'editMessage'])
+        ->middleware('throttle:20,1')
+        ->name('chat.message.update');
+
 });

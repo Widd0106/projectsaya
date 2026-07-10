@@ -1,8 +1,7 @@
 <script setup>
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
-import axios from 'axios';
-import { Send, Sparkles, Trash2, Pencil, X, Eraser } from 'lucide-vue-next';
+import { Send, Sparkles, Trash2, Pencil, X, Eraser, RefreshCw, Check } from 'lucide-vue-next';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -14,9 +13,15 @@ const props = defineProps({
 const messages = ref([...props.messages]);
 const newMessage = ref('');
 const isSending = ref(false);
+const regeneratingId = ref(null);
+const editingId = ref(null);
+const editingContent = ref('');
+const isEditSending = ref(false);
 const showDeleteConfirm = ref(false);
 const showClearConfirm = ref(false);
 const scrollContainer = ref(null);
+
+const anyBusy = computed(() => isSending.value || regeneratingId.value !== null || isEditSending.value);
 
 function scrollToBottom() {
   nextTick(() => {
@@ -28,24 +33,101 @@ function scrollToBottom() {
 
 onMounted(scrollToBottom);
 
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+}
+
+/**
+ * Kirim request ke endpoint streaming (SSE) manapun (send/regenerate/edit)
+ * dan kembalikan Response mentah, siap dibaca lewat consumeStream().
+ */
+async function streamFetch(url, method, body) {
+  return fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-CSRF-TOKEN': getCsrfToken(),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+/**
+ * Baca body Response sebagai Server-Sent Events, parse tiap blok "data: {...}",
+ * lalu panggil handler yang sesuai berdasarkan field "type" di payload-nya.
+ * Dipakai bareng oleh sendMessage / regenerate / saveEdit di bawah.
+ */
+async function consumeStream(response, handlers) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sepIndex;
+    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+
+      for (const line of rawEvent.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+
+        const dataStr = trimmed.slice(5).trim();
+        if (!dataStr) continue;
+
+        let payload;
+        try {
+          payload = JSON.parse(dataStr);
+        } catch (e) {
+          continue;
+        }
+
+        handlers[payload.type]?.(payload);
+      }
+    }
+  }
+}
+
 async function sendMessage() {
   const text = newMessage.value.trim();
-  if (!text || isSending.value) return;
+  if (!text || anyBusy.value) return;
 
   isSending.value = true;
+  newMessage.value = '';
 
-  // Tampilkan pesan user langsung (optimistic update)
   const tempId = `temp-${Date.now()}`;
   messages.value.push({ id: tempId, role: 'user', content: text });
-  newMessage.value = '';
   scrollToBottom();
 
+  let aiIndex = null;
+
   try {
-    const response = await axios.post(route('chat.message', props.chatId), { message: text });
-    // Ganti pesan sementara dengan data resmi dari server, lalu tambahkan balasan AI
-    const idx = messages.value.findIndex((m) => m.id === tempId);
-    if (idx !== -1) messages.value[idx] = response.data.userMessage;
-    messages.value.push(response.data.aiMessage);
+    const response = await streamFetch(route('chat.message.stream', props.chatId), 'POST', { message: text });
+    if (!response.ok || !response.body) throw new Error('stream gagal');
+
+    await consumeStream(response, {
+      user_message: (payload) => {
+        const idx = messages.value.findIndex((m) => m.id === tempId);
+        if (idx !== -1) messages.value[idx] = payload.message;
+      },
+      delta: (payload) => {
+        if (aiIndex === null) {
+          messages.value.push({ id: `streaming-${Date.now()}`, role: 'assistant', content: '' });
+          aiIndex = messages.value.length - 1;
+        }
+        messages.value[aiIndex].content += payload.delta;
+        scrollToBottom();
+      },
+      done: (payload) => {
+        if (aiIndex !== null) messages.value[aiIndex] = payload.aiMessage;
+        else messages.value.push(payload.aiMessage);
+      },
+    });
   } catch (error) {
     messages.value.push({
       id: `error-${Date.now()}`,
@@ -58,6 +140,104 @@ async function sendMessage() {
   }
 }
 
+// Regenerate cuma diizinkan untuk balasan AI yang paling terakhir,
+// supaya riwayat chat tetap linear & konsisten.
+function isLastAssistantMessage(msg) {
+  if (msg.role !== 'assistant' || typeof msg.id !== 'number') return false;
+  const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant' && typeof m.id === 'number');
+  return !!lastAssistant && lastAssistant.id === msg.id;
+}
+
+async function regenerate(msg) {
+  if (anyBusy.value) return;
+
+  const targetIndex = messages.value.findIndex((m) => m.id === msg.id);
+  if (targetIndex === -1) return;
+
+  regeneratingId.value = msg.id;
+  messages.value[targetIndex] = { ...messages.value[targetIndex], content: '' };
+
+  try {
+    const response = await streamFetch(
+      route('chat.message.regenerate', { chat: props.chatId, message: msg.id }),
+      'POST',
+    );
+    if (!response.ok || !response.body) throw new Error('regenerate gagal');
+
+    await consumeStream(response, {
+      delta: (payload) => {
+        messages.value[targetIndex].content += payload.delta;
+        scrollToBottom();
+      },
+      done: (payload) => {
+        messages.value[targetIndex] = payload.aiMessage;
+      },
+    });
+  } catch (error) {
+    messages.value[targetIndex].content = 'Maaf, gagal regenerate balasan. Coba lagi.';
+  } finally {
+    regeneratingId.value = null;
+    scrollToBottom();
+  }
+}
+
+function startEdit(msg) {
+  if (anyBusy.value) return;
+  editingId.value = msg.id;
+  editingContent.value = msg.content;
+}
+
+function cancelEdit() {
+  editingId.value = null;
+  editingContent.value = '';
+}
+
+async function saveEdit(msg) {
+  const text = editingContent.value.trim();
+  if (!text || isEditSending.value) return;
+
+  const targetIndex = messages.value.findIndex((m) => m.id === msg.id);
+  if (targetIndex === -1) return;
+
+  isEditSending.value = true;
+  editingId.value = null;
+
+  try {
+    const response = await streamFetch(
+      route('chat.message.update', { chat: props.chatId, message: msg.id }),
+      'PUT',
+      { message: text },
+    );
+    if (!response.ok || !response.body) throw new Error('edit gagal');
+
+    let aiIndex = null;
+
+    await consumeStream(response, {
+      edited: (payload) => {
+        // Ganti pesan yang diedit, buang semua pesan setelahnya (riwayat lama sudah tidak relevan)
+        messages.value.splice(targetIndex, messages.value.length - targetIndex, payload.message);
+      },
+      delta: (payload) => {
+        if (aiIndex === null) {
+          messages.value.push({ id: `streaming-${Date.now()}`, role: 'assistant', content: '' });
+          aiIndex = messages.value.length - 1;
+        }
+        messages.value[aiIndex].content += payload.delta;
+        scrollToBottom();
+      },
+      done: (payload) => {
+        if (aiIndex !== null) messages.value[aiIndex] = payload.aiMessage;
+        else messages.value.push(payload.aiMessage);
+      },
+    });
+  } catch (error) {
+    // Scope portofolio: tidak perlu rollback kompleks, cukup biarkan apa adanya
+  } finally {
+    isEditSending.value = false;
+    scrollToBottom();
+  }
+}
+
 function confirmDelete() {
   router.delete(route('characters.destroy', props.character.id), {
     onSuccess: () => router.visit(route('dashboard')),
@@ -65,8 +245,6 @@ function confirmDelete() {
 }
 
 async function deleteMessage(messageId) {
-  // Optimistic update: hapus dari tampilan dulu sebelum konfirmasi server,
-  // supaya terasa instan. Kalau gagal, kembalikan ke daftar.
   const idx = messages.value.findIndex((m) => m.id === messageId);
   if (idx === -1) return;
 
@@ -74,9 +252,11 @@ async function deleteMessage(messageId) {
   messages.value.splice(idx, 1);
 
   try {
-    await axios.delete(route('chat.message.destroy', { chat: props.chatId, message: messageId }));
+    await fetch(route('chat.message.destroy', { chat: props.chatId, message: messageId }), {
+      method: 'DELETE',
+      headers: { 'X-CSRF-TOKEN': getCsrfToken(), Accept: 'application/json' },
+    });
   } catch (error) {
-    // Gagal hapus di server -> kembalikan pesan ke posisi semula
     messages.value.splice(idx, 0, removedMessage);
   }
 }
@@ -87,9 +267,12 @@ function askClearChat() {
 
 async function confirmClearChat() {
   try {
-    const response = await axios.delete(route('chat.clear', props.chatId));
-    // Setelah dibersihkan, server otomatis mengirim ulang greeting sebagai pesan baru
-    messages.value = [response.data.greetingMessage];
+    const response = await fetch(route('chat.clear', props.chatId), {
+      method: 'DELETE',
+      headers: { 'X-CSRF-TOKEN': getCsrfToken(), Accept: 'application/json' },
+    });
+    const data = await response.json();
+    messages.value = [data.greetingMessage];
   } catch (error) {
     // Tidak perlu aksi khusus, modal akan tetap tertutup dan user bisa coba lagi manual
   } finally {
@@ -165,28 +348,75 @@ function formatTime(dateStr) {
               :src="character.avatar_url"
               class="h-7 w-7 flex-shrink-0 rounded-full object-cover sm:h-8 sm:w-8"
             />
-            <div class="min-w-0">
-              <div class="flex items-center gap-1" :class="{ 'flex-row-reverse': msg.role === 'user' }">
-                <div
-                  class="rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:px-4 sm:py-3"
-                  :class="msg.role === 'user'
-                    ? 'border border-accent/60 bg-bg-card text-gray-100'
-                    : 'bg-bg-card text-gray-100'"
-                >
-                  {{ msg.content }}
+            <div class="min-w-0 w-full">
+              <!-- Mode edit (khusus pesan user) -->
+              <div v-if="editingId === msg.id" class="flex flex-col gap-2">
+                <textarea
+                  v-model="editingContent"
+                  rows="2"
+                  class="w-full min-w-[220px] rounded-xl border border-accent/60 bg-bg-input px-3 py-2 text-sm text-white outline-none"
+                  @keydown.enter.exact.prevent="saveEdit(msg)"
+                  @keydown.esc.prevent="cancelEdit"
+                ></textarea>
+                <div class="flex justify-end gap-2">
+                  <button @click="cancelEdit" class="rounded-full p-1.5 text-gray-400 transition hover:bg-bg-card hover:text-white">
+                    <X :size="14" />
+                  </button>
+                  <button @click="saveEdit(msg)" class="rounded-full bg-accent p-1.5 text-white transition hover:opacity-90">
+                    <Check :size="14" />
+                  </button>
                 </div>
-                <button
-                  v-if="typeof msg.id === 'number'"
-                  @click="deleteMessage(msg.id)"
-                  title="Hapus pesan ini"
-                  class="flex-shrink-0 rounded-full p-1.5 text-gray-600 opacity-60 transition hover:bg-bg-card hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-                >
-                  <X :size="14" />
-                </button>
               </div>
-              <div class="mt-1 text-xs text-gray-500" :class="msg.role === 'user' ? 'text-right' : 'text-left'">
-                {{ formatTime(msg.created_at) }}
-              </div>
+
+              <!-- Mode tampil normal -->
+              <template v-else>
+                <div class="flex items-center gap-1" :class="{ 'flex-row-reverse': msg.role === 'user' }">
+                  <div
+                    class="rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:px-4 sm:py-3"
+                    :class="msg.role === 'user'
+                      ? 'border border-accent/60 bg-bg-card text-gray-100'
+                      : 'bg-bg-card text-gray-100'"
+                  >
+                    {{ msg.content }}<span v-if="msg.content === '' && regeneratingId === msg.id" class="animate-pulse text-gray-500">…</span>
+                  </div>
+
+                  <div class="flex flex-shrink-0 items-center gap-0.5 opacity-60 transition sm:opacity-0 sm:group-hover:opacity-100">
+                    <!-- Regenerate: cuma di balasan AI paling terakhir -->
+                    <button
+                      v-if="isLastAssistantMessage(msg)"
+                      @click="regenerate(msg)"
+                      :disabled="anyBusy"
+                      title="Regenerate balasan ini"
+                      class="rounded-full p-1.5 text-gray-600 transition hover:bg-bg-card hover:text-accent disabled:opacity-40"
+                    >
+                      <RefreshCw :size="14" :class="{ 'animate-spin': regeneratingId === msg.id }" />
+                    </button>
+
+                    <!-- Edit: cuma di pesan user -->
+                    <button
+                      v-if="msg.role === 'user' && typeof msg.id === 'number'"
+                      @click="startEdit(msg)"
+                      :disabled="anyBusy"
+                      title="Edit pesan ini"
+                      class="rounded-full p-1.5 text-gray-600 transition hover:bg-bg-card hover:text-white disabled:opacity-40"
+                    >
+                      <Pencil :size="14" />
+                    </button>
+
+                    <button
+                      v-if="typeof msg.id === 'number'"
+                      @click="deleteMessage(msg.id)"
+                      title="Hapus pesan ini"
+                      class="rounded-full p-1.5 text-gray-600 transition hover:bg-bg-card hover:text-red-400"
+                    >
+                      <X :size="14" />
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-1 text-xs text-gray-500" :class="msg.role === 'user' ? 'text-right' : 'text-left'">
+                  {{ formatTime(msg.created_at) }}
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -204,12 +434,13 @@ function formatTime(dateStr) {
           <input
             v-model="newMessage"
             type="text"
+            :disabled="anyBusy"
             :placeholder="`Message ${character.name}...`"
-            class="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none"
+            class="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none disabled:opacity-50"
           />
           <button
             type="submit"
-            :disabled="isSending || !newMessage.trim()"
+            :disabled="anyBusy || !newMessage.trim()"
             class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:opacity-90 disabled:opacity-40"
           >
             <Send :size="16" />
