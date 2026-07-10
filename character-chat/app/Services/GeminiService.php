@@ -4,13 +4,14 @@ namespace App\Services;
 
 use App\Models\Chat;
 use App\Services\Concerns\BuildsCharacterSystemPrompt;
+use App\Services\Concerns\ConsumesSseStream;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class GeminiService
 {
-    use BuildsCharacterSystemPrompt;
+    use BuildsCharacterSystemPrompt, ConsumesSseStream;
 
     protected string $apiKey;
     protected string $model;
@@ -23,18 +24,16 @@ class GeminiService
     }
 
     /**
-     * Bangun System Prompt dari profil karakter + contoh dialog,
-     * lalu kirim ke Gemini bersama 10 riwayat chat terakhir sebagai
-     * konteks percakapan (Inti dari poin 6 - Prompt Engineering).
+     * Susun system prompt + riwayat percakapan (format Gemini: contents[]
+     * berisi role user/model). Riwayat 10 pesan terakhir SUDAH termasuk
+     * pesan user paling baru (sudah disimpan ke DB sebelum method ini
+     * dipanggil), jadi tidak perlu ditambahkan lagi secara terpisah.
      */
-    public function generateReply(Chat $chat, string $userMessage): string
+    protected function buildContents(Chat $chat): array
     {
         $character = $chat->character;
-
         $systemPrompt = $this->buildSystemPrompt($character);
 
-        // Ambil 10 pesan terakhir (dari yang paling baru), lalu balik urutannya
-        // jadi kronologis (lama -> baru) supaya AI membaca konteks dengan benar.
         $recentMessages = $chat->recentMessages(10)->get()->reverse()->values();
 
         $contents = [];
@@ -46,13 +45,14 @@ class GeminiService
             ];
         }
 
-        // Tambahkan pesan baru dari user yang sedang dikirim sekarang
-        $contents[] = [
-            'role' => 'user',
-            'parts' => [['text' => $userMessage]],
-        ];
+        return [$systemPrompt, $contents];
+    }
 
-        $payload = [
+    protected function basePayload(Chat $chat): array
+    {
+        [$systemPrompt, $contents] = $this->buildContents($chat);
+
+        return [
             'system_instruction' => [
                 'parts' => [['text' => $systemPrompt]],
             ],
@@ -63,46 +63,48 @@ class GeminiService
                 'maxOutputTokens' => 600,
             ],
         ];
+    }
 
+    protected function retryWhen(): \Closure
+    {
+        return function ($exception, $request) {
+            if ($exception instanceof \Illuminate\Http\Client\ConnectionException) {
+                return true;
+            }
+
+            $status = $exception->response?->status();
+
+            return $status === 429 || ($status !== null && $status >= 500);
+        };
+    }
+
+    /**
+     * Balasan non-streaming — dipakai sebagai provider cadangan (fallback)
+     * kalau OpenRouter gagal total.
+     */
+    public function generateReply(Chat $chat): string
+    {
         if (empty($this->apiKey)) {
             throw new RuntimeException('AQ.Ab8RN6JWthHUVee35U2oi6lMB4Hre8_qYB_2Jhq7hE0bXvg1Kw');
         }
 
-        // Retry otomatis 2x (total 3 percobaan) khusus untuk error yang sifatnya
-        // sementara (timeout, 5xx, 429 rate limit) dengan jeda 300ms, 600ms.
-        // Error 4xx lain (401/400, dst) tidak perlu diulang karena pasti gagal lagi.
         $response = Http::timeout(30)
-            ->retry(2, 300, function ($exception, $request) {
-                if ($exception instanceof \Illuminate\Http\Client\ConnectionException) {
-                    return true;
-                }
-
-                $status = $exception->response?->status();
-
-                return $status === 429 || ($status !== null && $status >= 500);
-            }, throw: false)
+            ->retry(2, 300, $this->retryWhen(), throw: false)
             ->post(
                 "{$this->baseUrl}/{$this->model}:generateContent?key={$this->apiKey}",
-                $payload
+                $this->basePayload($chat)
             );
 
         if ($response->failed()) {
-            Log::error('Gemini API error', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+            Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
 
-            throw new RuntimeException(
-                'Gagal menghubungi Gemini API: ' . $response->status() . ' - ' . $response->body()
-            );
+            throw new RuntimeException('Gagal menghubungi Gemini API: ' . $response->status() . ' - ' . $response->body());
         }
 
         $data = $response->json();
-
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
         if (! $text) {
-            // Kemungkinan diblokir oleh safety filter Gemini
             $finishReason = $data['candidates'][0]['finishReason'] ?? 'UNKNOWN';
             Log::warning('Gemini returned empty content', ['finishReason' => $finishReason, 'data' => $data]);
 
@@ -110,5 +112,51 @@ class GeminiService
         }
 
         return trim($text);
+    }
+
+    /**
+     * Balasan streaming lewat endpoint streamGenerateContent (SSE).
+     * $onChunk dipanggil tiap ada potongan teks baru dari model.
+     */
+    public function streamReply(Chat $chat, callable $onChunk): string
+    {
+        if (empty($this->apiKey)) {
+            throw new RuntimeException('AQ.Ab8RN6JWthHUVee35U2oi6lMB4Hre8_qYB_2Jhq7hE0bXvg1Kw');
+        }
+
+        $response = Http::withOptions(['stream' => true])
+            // Model gratis kadang lambat, kasih ruang lebih daripada versi non-stream.
+            ->timeout(120)
+            ->post(
+                "{$this->baseUrl}/{$this->model}:streamGenerateContent?alt=sse&key={$this->apiKey}",
+                $this->basePayload($chat)
+            );
+
+        if ($response->failed()) {
+            Log::error('Gemini API error (stream)', ['status' => $response->status()]);
+
+            throw new RuntimeException('Gagal menghubungi Gemini API (stream): ' . $response->status());
+        }
+
+        $fullText = '';
+
+        $this->consumeSse($response->getBody(), function (string $data) use (&$fullText, $onChunk) {
+            $json = json_decode($data, true);
+            $piece = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+            if ($piece !== null && $piece !== '') {
+                $fullText .= $piece;
+                $onChunk($piece);
+            }
+        });
+
+        if ($fullText === '') {
+            $fallback = "Maaf, aku sedang tidak bisa merespons pesan itu. Coba ungkapkan dengan cara lain?";
+            $onChunk($fallback);
+
+            return $fallback;
+        }
+
+        return trim($fullText);
     }
 }
