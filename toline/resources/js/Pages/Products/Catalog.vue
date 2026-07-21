@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { Search } from 'lucide-vue-next';
 import debounce from 'lodash/debounce';
 
 const props = defineProps({
@@ -28,12 +29,15 @@ const formatPrice = (value) =>
 <template>
     <AppLayout title="Katalog Produk">
         <div class="mb-6">
-            <input
-                v-model="searchTerm"
-                type="text"
-                placeholder="Cari item, skun, atau top up di ToLine..."
-                class="w-full max-w-xl rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-toline"
-            />
+            <div class="relative w-full max-w-xl">
+                <Search class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                    v-model="searchTerm"
+                    type="text"
+                    placeholder="Cari item, skun, atau top up di ToLine..."
+                    class="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-5 text-sm focus:outline-none focus:ring-2 focus:ring-toline"
+                />
+            </div>
         </div>
 
         <h1 class="text-2xl font-bold text-slate-900">Katalog Produk</h1>

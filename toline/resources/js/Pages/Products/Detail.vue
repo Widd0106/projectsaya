@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { Minus, Plus, ShieldCheck, Store } from 'lucide-vue-next';
 
 const props = defineProps({
     product: Object,
@@ -27,7 +28,6 @@ const buyNow = () => {
         items: [{ product_id: props.product.id, quantity: quantity.value }],
     });
 };
-
 </script>
 
 <template>
@@ -51,31 +51,33 @@ const buyNow = () => {
                     <p class="mb-2 text-sm font-medium text-slate-700">Jumlah</p>
                     <div class="flex items-center gap-4">
                         <button
-                            class="h-9 w-9 rounded-full border border-slate-300 text-lg text-slate-600 hover:bg-slate-50"
+                            class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50"
                             @click="decrement"
                         >
-                            −
+                            <Minus class="h-4 w-4" />
                         </button>
                         <span class="w-8 text-center font-semibold">{{ quantity }}</span>
                         <button
-                            class="h-9 w-9 rounded-full border border-slate-300 text-lg text-slate-600 hover:bg-slate-50"
+                            class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50"
                             @click="increment"
                         >
-                            +
+                            <Plus class="h-4 w-4" />
                         </button>
                         <span class="text-xs text-slate-400">Stok tersedia: {{ product.stock }}</span>
                     </div>
                 </div>
 
                 <button
-                    class="mt-8 w-full rounded-full bg-toline py-3 text-sm font-semibold text-white hover:bg-toline-dark"
+                    class="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-toline py-3 text-sm font-semibold text-white hover:bg-toline-dark"
                     @click="buyNow"
                 >
-                    🛡️ Beli Sekarang — {{ formatPrice(totalPrice) }}
+                    <ShieldCheck class="h-4 w-4" /> Beli Sekarang — {{ formatPrice(totalPrice) }}
                 </button>
 
                 <div class="mt-6 flex items-center gap-3 rounded-lg border border-slate-100 p-3">
-                    <div class="h-8 w-8 rounded-full bg-slate-200"></div>
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200">
+                        <Store class="h-4 w-4 text-slate-500" />
+                    </div>
                     <span class="text-sm font-medium">{{ product.seller.store_name ?? product.seller.name }}</span>
                     <span class="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs">Lihat Toko</span>
                 </div>

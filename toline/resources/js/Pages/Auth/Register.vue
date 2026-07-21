@@ -1,5 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
+import { ShoppingBag, Store } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
@@ -76,20 +77,20 @@ const submit = () => {
                     <div class="grid grid-cols-2 gap-3">
                         <button
                             type="button"
-                            class="rounded-xl border p-4 text-left text-sm transition"
+                            class="flex flex-col items-center gap-2 rounded-xl border p-4 text-center text-sm transition"
                             :class="form.role === 'buyer' ? 'border-toline bg-toline-light text-toline-dark' : 'border-slate-200 text-slate-600'"
                             @click="form.role = 'buyer'"
                         >
-                            <span class="block text-lg">🛍️</span>
+                            <ShoppingBag class="h-6 w-6" />
                             <span class="font-semibold">Pembeli</span>
                         </button>
                         <button
                             type="button"
-                            class="rounded-xl border p-4 text-left text-sm transition"
+                            class="flex flex-col items-center gap-2 rounded-xl border p-4 text-center text-sm transition"
                             :class="form.role === 'seller' ? 'border-toline bg-toline-light text-toline-dark' : 'border-slate-200 text-slate-600'"
                             @click="form.role = 'seller'"
                         >
-                            <span class="block text-lg">🏪</span>
+                            <Store class="h-6 w-6" />
                             <span class="font-semibold">Penjual</span>
                         </button>
                     </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
+import { Home, MessageCircle, Receipt, BarChart3, Plus, LogOut } from 'lucide-vue-next';
 
 defineProps({
     title: { type: String, default: '' },
@@ -24,7 +25,7 @@ const user = page.props.auth?.user;
                         class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
                         :class="route().current('catalog.index') ? 'bg-toline-light text-toline-dark' : 'text-slate-600 hover:bg-slate-50'"
                     >
-                        <span>🏠</span> Home (Katalog)
+                        <Home class="h-4 w-4" /> Home (Katalog)
                     </Link>
 
                     <Link
@@ -32,15 +33,16 @@ const user = page.props.auth?.user;
                         class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
                         :class="route().current('ai-chat.index') ? 'bg-toline-light text-toline-dark' : 'text-slate-600 hover:bg-slate-50'"
                     >
-                        <span>💬</span> Tanya AI
+                        <MessageCircle class="h-4 w-4" /> Tanya AI
                     </Link>
 
                     <Link
                         v-if="user?.role !== 'seller'"
                         :href="route('transactions.index')"
-                        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                        >
-                        <span>🧾</span> Pesanan Saya
+                        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
+                        :class="route().current('transactions.index') ? 'bg-toline-light text-toline-dark' : 'text-slate-600 hover:bg-slate-50'"
+                    >
+                        <Receipt class="h-4 w-4" /> Pesanan Saya
                     </Link>
 
                     <div v-if="user?.role === 'seller'" class="mt-2 border-t border-slate-100 pt-2">
@@ -49,13 +51,14 @@ const user = page.props.auth?.user;
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
                             :class="route().current('seller.dashboard') ? 'bg-toline-light text-toline-dark' : 'text-slate-600 hover:bg-slate-50'"
                         >
-                            <span>📊</span> Dashboard
+                            <BarChart3 class="h-4 w-4" /> Dashboard
                         </Link>
                         <Link
                             :href="route('seller.products.create')"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
+                            :class="route().current('seller.products.create') ? 'bg-toline-light text-toline-dark' : 'text-slate-600 hover:bg-slate-50'"
                         >
-                            <span>➕</span> Tambah Item
+                            <Plus class="h-4 w-4" /> Tambah Item
                         </Link>
                     </div>
 
@@ -71,7 +74,7 @@ const user = page.props.auth?.user;
                     as="button"
                     class="mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
                 >
-                    <span>↩</span> Keluar
+                    <LogOut class="h-4 w-4" /> Keluar
                 </Link>
             </aside>
 

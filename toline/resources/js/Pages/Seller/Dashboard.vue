@@ -1,7 +1,7 @@
 <script setup>
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { usePage } from '@inertiajs/vue3';
+import { Plus, Trash2, Store } from 'lucide-vue-next';
 
 defineProps({
     products: Array,
@@ -25,7 +25,9 @@ const removeProduct = (id) => {
     <AppLayout title="Toko Saya">
         <div class="grid grid-cols-3 gap-5">
             <div class="col-span-2 flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm">
-                <div class="h-14 w-14 rounded-full bg-slate-200"></div>
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200">
+                    <Store class="h-6 w-6 text-slate-500" />
+                </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900">{{ user.store_name ?? 'Toko Saya' }}</h1>
                     <p class="text-xs text-slate-500">Penyedia Top Up & In-Game Currency terpercaya sejak 2021.</p>
@@ -43,9 +45,9 @@ const removeProduct = (id) => {
             <h2 class="text-lg font-bold text-slate-900">Toko Saya</h2>
             <Link
                 :href="route('seller.products.create')"
-                class="rounded-full bg-toline px-4 py-2 text-sm font-semibold text-white hover:bg-toline-dark"
+                class="flex items-center gap-2 rounded-full bg-toline px-4 py-2 text-sm font-semibold text-white hover:bg-toline-dark"
             >
-                + Tambah Item
+                <Plus class="h-4 w-4" /> Tambah Item
             </Link>
         </div>
 
@@ -68,16 +70,17 @@ const removeProduct = (id) => {
                     <h3 class="truncate text-sm font-semibold">{{ product.name }}</h3>
                     <p class="text-xs text-slate-400">{{ product.category }} • Stok: {{ product.stock }}</p>
                     <p class="mt-1 text-sm font-bold text-toline-dark">{{ formatPrice(product.price) }}</p>
-                    <button class="mt-2 text-xs font-medium text-red-500" @click="removeProduct(product.id)">Hapus</button>
+                    <button class="mt-2 flex items-center gap-1 text-xs font-medium text-red-500" @click="removeProduct(product.id)">
+                        <Trash2 class="h-3.5 w-3.5" /> Hapus
+                    </button>
                 </div>
             </div>
 
-            <!-- Kondisi card kosong: selalu tampil sebagai tombol tambah cepat -->
             <Link
                 :href="route('seller.products.create')"
                 class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 p-6 text-center text-slate-400 hover:border-toline hover:text-toline"
             >
-                <span class="text-2xl">+</span>
+                <Plus class="h-6 w-6" />
                 <span class="text-sm font-medium">Belum ada produk</span>
                 <span class="text-xs">Tambah produk pertama Anda sekarang!</span>
             </Link>

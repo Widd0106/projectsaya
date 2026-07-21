@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { ShoppingBag, Store, X, Search } from 'lucide-vue-next';
 
 defineProps({
     canLogin: Boolean,
@@ -15,16 +16,19 @@ const showRoleModal = ref(true);
         <header class="flex items-center justify-between px-10 py-5">
             <span class="text-xl font-bold text-toline-darker">ToLine</span>
             <div class="flex flex-1 justify-center px-10">
-                <input
-                    type="text"
-                    placeholder="Cari item, game, atau top-up..."
-                    class="w-full max-w-md rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-toline"
-                />
+                <div class="relative w-full max-w-md">
+                    <Search class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Cari item, game, atau top-up..."
+                        class="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-5 text-sm focus:outline-none focus:ring-2 focus:ring-toline"
+                    />
+                </div>
             </div>
             <div class="flex items-center gap-3">
                 <Link :href="route('login')" class="text-sm font-medium text-slate-600">Masuk</Link>
                 <Link :href="route('register')" class="rounded-full bg-toline px-5 py-2 text-sm font-semibold text-white hover:bg-toline-dark">
-                    Daftar
+                    Masuk
                 </Link>
             </div>
         </header>
@@ -48,7 +52,9 @@ const showRoleModal = ref(true);
                         <h2 class="text-xl font-bold text-slate-900">Selamat Datang di ToLine</h2>
                         <p class="mt-1 text-sm text-slate-500">Pilih peran Anda untuk melanjutkan masuk ke platform kami.</p>
                     </div>
-                    <button class="text-slate-400 hover:text-slate-600" @click="showRoleModal = false">✕</button>
+                    <button class="text-slate-400 hover:text-slate-600" @click="showRoleModal = false">
+                        <X class="h-5 w-5" />
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -56,7 +62,7 @@ const showRoleModal = ref(true);
                         :href="route('login')"
                         class="flex flex-col items-center gap-3 rounded-xl border border-slate-200 p-6 text-center hover:border-toline hover:bg-toline-light"
                     >
-                        <span class="text-2xl">🛍️</span>
+                        <ShoppingBag class="h-7 w-7 text-toline" />
                         <span class="font-semibold text-slate-800">Masuk sebagai Pembeli</span>
                         <span class="text-xs text-slate-500">Cari item game & top up instan</span>
                     </Link>
@@ -65,7 +71,7 @@ const showRoleModal = ref(true);
                         :href="route('login')"
                         class="flex flex-col items-center gap-3 rounded-xl border border-slate-200 p-6 text-center hover:border-toline hover:bg-toline-light"
                     >
-                        <span class="text-2xl">🏪</span>
+                        <Store class="h-7 w-7 text-toline" />
                         <span class="font-semibold text-slate-800">Masuk sebagai Penjual</span>
                         <span class="text-xs text-slate-500">Kelola toko & tarik saldo kamu</span>
                     </Link>

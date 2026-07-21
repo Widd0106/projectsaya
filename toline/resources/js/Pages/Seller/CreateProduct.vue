@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { Upload, Save, Lightbulb } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
@@ -39,7 +40,7 @@ const submit = () => {
                 >
                     <img v-if="previewUrl" :src="previewUrl" class="h-full w-full rounded-xl object-cover" />
                     <template v-else>
-                        <span class="text-2xl">⬆</span>
+                        <Upload class="h-6 w-6 text-slate-400" />
                         <span class="text-sm font-medium text-slate-600">Unggah Gambar</span>
                         <span class="text-xs">Tarik dan lepas file di sini, atau klik untuk memilih file dari komputer</span>
                         <span class="text-[10px] text-slate-400">MAKS. 2MB (JPG, PNG)</span>
@@ -49,8 +50,10 @@ const submit = () => {
                 <p v-if="form.errors.image" class="mt-1 text-xs text-red-500">{{ form.errors.image }}</p>
 
                 <div class="mt-5 rounded-xl bg-toline-light p-4 text-xs text-toline-darker">
-                    <p class="mb-1 font-semibold">💡 Tips Jualan Cepat</p>
-                    <ul class="list-disc space-y-1 pl-4">
+                    <p class="mb-1 flex items-center gap-1.5 font-semibold">
+                        <Lightbulb class="h-4 w-4" /> Tips Jualan Cepat
+                    </p>
+                    <ul class="list-disc space-y-1 pl-5">
                         <li>Gunakan judul yang spesifik (Level, Rank, Item)</li>
                         <li>Deskripsikan detail akun/item secara jelas</li>
                         <li>Harga yang kompetitif meningkatkan minat</li>
@@ -139,9 +142,9 @@ const submit = () => {
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="rounded-full bg-toline px-6 py-2.5 text-sm font-semibold text-white hover:bg-toline-dark disabled:opacity-50"
+                        class="flex items-center gap-2 rounded-full bg-toline px-6 py-2.5 text-sm font-semibold text-white hover:bg-toline-dark disabled:opacity-50"
                     >
-                        💾 Simpan Produk
+                        <Save class="h-4 w-4" /> Simpan Produk
                     </button>
                 </div>
             </div>
