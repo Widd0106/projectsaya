@@ -46,7 +46,6 @@ class AiChatController extends Controller
         ? $user->chats()->findOrFail($validated['chat_id'])
         : $user->chats()->create(['title' => \Illuminate\Support\Str::limit($validated['message'], 40)]);
 
-    // Ambil riwayat SEBELUM pesan baru ditambahkan, biar AI ingat konteks sebelumnya
     $history = $chat->messages()
         ->orderBy('created_at')
         ->latest()
@@ -62,8 +61,7 @@ class AiChatController extends Controller
         'content' => $validated['message'],
     ]);
 
-    $internalContext = $this->aiService->buildInternalContext($validated['message'], $user);
-    $result = $this->aiService->ask($validated['message'], $internalContext, $history);
+    $result = $this->aiService->ask($validated['message'], $user, $history);
 
     $chat->messages()->create([
         'role' => 'assistant',
